@@ -1,0 +1,116 @@
+plugins {
+    id 'eclipse'
+    id 'idea'
+    id 'maven-publish'
+    id 'net.minecraftforge.gradle' version '[6.0.24,6.2)'
+}
+
+version = '1.0.0'
+group = 'com.myrevolvermod.myrevolvermod'
+
+base {
+    archivesName = 'myrevolvermod'
+}
+
+java.toolchain.languageVersion = JavaLanguageVersion.of(17)
+
+
+def generatedResourcesDir = layout.buildDirectory.dir('generated/resources/main')
+
+sourceSets {
+    main {
+        resources {
+            srcDir generatedResourcesDir
+        }
+    }
+}
+
+tasks.register('generateRevolverTexture') {
+    def inputFile = file('src/main/resources/assets/myrevolvermod/textures/item/revolver.png.base64')
+    def outputFile = generatedResourcesDir.map { it.file('assets/myrevolvermod/textures/item/revolver.png') }
+
+    inputs.file(inputFile)
+    outputs.file(outputFile)
+
+    doLast {
+        byte[] decoded = java.util.Base64.getDecoder().decode(inputFile.text.trim())
+        File out = outputFile.get().asFile
+        out.parentFile.mkdirs()
+        out.bytes = decoded
+    }
+}
+
+tasks.named('processResources').configure {
+    dependsOn tasks.named('generateRevolverTexture')
+}
+
+minecraft {
+    mappings channel: 'official', version: '1.20.1'
+    copyIdeResources = true
+
+    runs {
+        configureEach {
+            workingDirectory project.file('run')
+            property 'forge.logging.markers', 'REGISTRIES'
+            property 'forge.logging.console.level', 'debug'
+            mods {
+                myrevolvermod {
+                    source sourceSets.main
+                }
+            }
+        }
+
+        client {
+            property 'forge.enabledGameTestNamespaces', 'myrevolvermod'
+        }
+
+        server {
+            property 'forge.enabledGameTestNamespaces', 'myrevolvermod'
+            args '--nogui'
+        }
+    }
+}
+
+repositories {
+    mavenCentral()
+    maven {
+        name = 'GeckoLib'
+        url = 'https://dl.cloudsmith.io/public/geckolib3/geckolib/maven/'
+    }
+}
+
+dependencies {
+    minecraft 'net.minecraftforge:forge:1.20.1-47.4.0'
+    implementation fg.deobf('software.bernie.geckolib:geckolib-forge-1.20.1:4.4.9')
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+}
+
+jar {
+    manifest {
+        attributes([
+            'Specification-Title'     : 'myrevolvermod',
+            'Specification-Vendor'    : 'myrevolvermod',
+            'Specification-Version'   : '1',
+            'Implementation-Title'    : project.name,
+            'Implementation-Version'  : project.version,
+            'Implementation-Vendor'   : 'myrevolvermod',
+            'Implementation-Timestamp': new Date().format("yyyy-MM-dd'T'HH:mm:ssZ")
+        ])
+    }
+}
+
+publishing {
+    publications {
+        register('mavenJava', MavenPublication) {
+            artifact jar
+        }
+    }
+    repositories {
+        maven {
+            url "file://${project.projectDir}/repo"
+        }
+    }
+}
