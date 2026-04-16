@@ -13,15 +13,24 @@ set "LOCAL_GRADLE_DIR=%CD%\.tools\gradle-8.7"
 set "LOCAL_GRADLE_BIN=%LOCAL_GRADLE_DIR%\bin\gradle.bat"
 set "BUILD_CMD="
 set "BOOTSTRAP_CMD="
+set "SYSTEM_GRADLE="
 
 if exist "%CD%\gradlew.bat" (
     set "BUILD_CMD=%CD%\gradlew.bat"
     echo Found gradle wrapper.
 ) else (
-    where /Q gradle
-    if %ERRORLEVEL%==0 (
-        set "BOOTSTRAP_CMD=gradle"
-        echo Found system gradle.
+    for %%G in (gradle.bat gradle.cmd gradle.exe gradle) do (
+        if not defined SYSTEM_GRADLE (
+            for /f "delims=" %%P in ('where %%G 2^>nul') do (
+                if not defined SYSTEM_GRADLE set "SYSTEM_GRADLE=%%P"
+            )
+        )
+    )
+
+    if defined SYSTEM_GRADLE (
+        set "BOOTSTRAP_CMD=%SYSTEM_GRADLE%"
+        echo Found system gradle:
+        echo   %SYSTEM_GRADLE%
     ) else (
         echo Gradle was not found. Downloading local Gradle 8.7...
         if not exist "%CD%\.tools" mkdir "%CD%\.tools"
@@ -47,11 +56,7 @@ if exist "%CD%\gradlew.bat" (
 if not defined BUILD_CMD (
     echo.
     echo Creating Gradle wrapper files...
-    if /I "%BOOTSTRAP_CMD%"=="gradle" (
-        call gradle wrapper --gradle-version 8.7 --distribution-type bin --warning-mode all --stacktrace
-    ) else (
-        call "%BOOTSTRAP_CMD%" wrapper --gradle-version 8.7 --distribution-type bin --warning-mode all --stacktrace
-    )
+    call "%BOOTSTRAP_CMD%" wrapper --gradle-version 8.7 --distribution-type bin --warning-mode all --stacktrace
 
     if ERRORLEVEL 1 (
         echo ERROR: Wrapper generation failed.
