@@ -1,6 +1,8 @@
 package com.myrevolvermod.myrevolvermod.item;
 
 import com.myrevolvermod.myrevolvermod.client.RevolverRenderer;
+import com.mojang.blaze3d.vertex.PoseStack;
+import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.client.renderer.BlockEntityWithoutLevelRenderer;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.server.level.ServerLevel;
@@ -8,9 +10,11 @@ import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResultHolder;
+import net.minecraft.world.entity.HumanoidArm;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.entity.projectile.SmallFireball;
 import net.minecraft.world.item.Item;
+import net.minecraft.world.item.UseAnim;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.Level;
@@ -54,7 +58,30 @@ public class RevolverItem extends Item implements GeoItem {
                 }
                 return this.renderer;
             }
+
+            @Override
+            public boolean applyForgeHandTransform(PoseStack poseStack,
+                                                   LocalPlayer player,
+                                                   HumanoidArm arm,
+                                                   ItemStack itemInHand,
+                                                   float partialTick,
+                                                   float equipProcess,
+                                                   float swingProcess) {
+                // Block vanilla use/swing hand transform for this item so only GeckoLib animation is visible.
+                return true;
+            }
         });
+    }
+
+
+    @Override
+    public UseAnim getUseAnimation(ItemStack stack) {
+        return UseAnim.NONE;
+    }
+
+    @Override
+    public int getUseDuration(ItemStack stack) {
+        return 0;
     }
 
     @Override
