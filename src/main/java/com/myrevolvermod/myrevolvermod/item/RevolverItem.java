@@ -69,7 +69,7 @@ public class RevolverItem extends Item implements GeoItem {
                                                    float swingProcess) {
                 // Apply stable base first-person transform, but skip vanilla swing/use bobbing.
                 int armSide = arm == HumanoidArm.RIGHT ? 1 : -1;
-                poseStack.translate(armSide * 0.56F, -0.52F + (equipProcess * -0.6F), -0.72F);
+                poseStack.translate(armSide * 0.56F, -0.52F, -0.72F);
                 return true;
             }
         });
