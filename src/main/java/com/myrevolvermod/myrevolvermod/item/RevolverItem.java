@@ -67,7 +67,9 @@ public class RevolverItem extends Item implements GeoItem {
                                                    float partialTick,
                                                    float equipProcess,
                                                    float swingProcess) {
-                // Block vanilla use/swing hand transform for this item so only GeckoLib animation is visible.
+                // Apply stable base first-person transform, but skip vanilla swing/use bobbing.
+                int armSide = arm == HumanoidArm.RIGHT ? 1 : -1;
+                poseStack.translate(armSide * 0.56F, -0.52F + (equipProcess * -0.6F), -0.72F);
                 return true;
             }
         });
