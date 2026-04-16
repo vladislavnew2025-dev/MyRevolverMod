@@ -18,9 +18,9 @@ if exist "%CD%\gradlew.bat" (
     set "BUILD_CMD=%CD%\gradlew.bat"
     echo Found gradle wrapper.
 ) else (
-    where /Q gradle.bat
+    where /Q gradle
     if %ERRORLEVEL%==0 (
-        set "BOOTSTRAP_CMD=gradle.bat"
+        set "BOOTSTRAP_CMD=gradle"
         echo Found system gradle.
     ) else (
         echo Gradle was not found. Downloading local Gradle 8.7...
@@ -47,8 +47,8 @@ if exist "%CD%\gradlew.bat" (
 if not defined BUILD_CMD (
     echo.
     echo Creating Gradle wrapper files...
-    if /I "%BOOTSTRAP_CMD%"=="gradle.bat" (
-        call gradle.bat wrapper --gradle-version 8.7 --distribution-type bin --warning-mode all --stacktrace
+    if /I "%BOOTSTRAP_CMD%"=="gradle" (
+        call gradle wrapper --gradle-version 8.7 --distribution-type bin --warning-mode all --stacktrace
     ) else (
         call "%BOOTSTRAP_CMD%" wrapper --gradle-version 8.7 --distribution-type bin --warning-mode all --stacktrace
     )
