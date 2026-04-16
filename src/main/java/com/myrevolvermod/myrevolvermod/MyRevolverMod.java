@@ -1,5 +1,6 @@
 package com.myrevolvermod.myrevolvermod;
 
+import com.myrevolvermod.myrevolvermod.network.ModNetwork;
 import com.myrevolvermod.myrevolvermod.registry.ModItems;
 import net.minecraftforge.eventbus.api.IEventBus;
 import net.minecraftforge.fml.common.Mod;
@@ -15,5 +16,6 @@ public class MyRevolverMod {
 
         IEventBus modEventBus = FMLJavaModLoadingContext.get().getModEventBus();
         ModItems.ITEMS.register(modEventBus);
+        ModNetwork.register();
     }
 }

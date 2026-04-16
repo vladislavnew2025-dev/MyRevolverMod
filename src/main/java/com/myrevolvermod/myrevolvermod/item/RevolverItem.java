@@ -8,18 +8,12 @@ import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResultHolder;
-import net.minecraft.world.damagesource.DamageSource;
-import net.minecraft.world.entity.Entity;
-import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.entity.projectile.SmallFireball;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.level.ClipContext;
+import net.minecraft.world.item.Items;
 import net.minecraft.world.level.Level;
-import net.minecraft.world.phys.AABB;
-import net.minecraft.world.phys.EntityHitResult;
-import net.minecraft.world.phys.HitResult;
-import net.minecraft.world.phys.Vec3;
 import net.minecraftforge.client.extensions.common.IClientItemExtensions;
 import software.bernie.geckolib.animatable.GeoItem;
 import software.bernie.geckolib.animatable.SingletonGeoAnimatable;
@@ -36,7 +30,6 @@ import java.util.function.Consumer;
 public class RevolverItem extends Item implements GeoItem {
     private static final String AMMO_TAG = "Ammo";
     private static final int MAX_AMMO = 6;
-    private static final double RANGE = 32.0;
 
     private static final RawAnimation IDLE = RawAnimation.begin().then("idle", Animation.LoopType.LOOP);
     private static final RawAnimation FIRE = RawAnimation.begin().thenPlay("fire");
@@ -67,72 +60,98 @@ public class RevolverItem extends Item implements GeoItem {
     @Override
     public InteractionResultHolder<ItemStack> use(Level level, Player player, InteractionHand hand) {
         ItemStack stack = player.getItemInHand(hand);
+        if (hand != InteractionHand.MAIN_HAND) {
+            return InteractionResultHolder.pass(stack);
+        }
 
         if (player.isShiftKeyDown()) {
             if (!level.isClientSide) {
-                setAmmo(stack, MAX_AMMO);
-                triggerAnim(player, GeoItem.getOrAssignId(stack, (ServerLevel) level), "controller", "reload");
-                level.playSound(null, player.blockPosition(), SoundEvents.CROSSBOW_LOADING_END, SoundSource.PLAYERS, 0.9f, 0.9f);
+                reloadFromInventory(player, stack, true);
             }
-            player.getCooldowns().addCooldown(this, 12);
-            return InteractionResultHolder.sidedSuccess(stack, level.isClientSide);
+            player.getCooldowns().addCooldown(this, 10);
+            return InteractionResultHolder.consume(stack);
         }
 
-        int ammo = getAmmo(stack);
-        if (ammo <= 0) {
+        if (getAmmo(stack) <= 0) {
             if (!level.isClientSide) {
                 level.playSound(null, player.blockPosition(), SoundEvents.DISPENSER_FAIL, SoundSource.PLAYERS, 0.8f, 1.0f);
             }
-            return InteractionResultHolder.fail(stack);
+            return InteractionResultHolder.consume(stack);
         }
 
         if (!level.isClientSide) {
             fire(level, player);
-            setAmmo(stack, ammo - 1);
+            setAmmo(stack, getAmmo(stack) - 1);
             triggerAnim(player, GeoItem.getOrAssignId(stack, (ServerLevel) level), "controller", "fire");
-            level.playSound(null, player.blockPosition(), SoundEvents.GENERIC_EXPLODE, SoundSource.PLAYERS, 0.5f, 1.8f);
+            level.playSound(null, player.blockPosition(), SoundEvents.BLAZE_SHOOT, SoundSource.PLAYERS, 0.55f, 1.3f);
         }
 
         player.getCooldowns().addCooldown(this, 4);
-        return InteractionResultHolder.sidedSuccess(stack, level.isClientSide);
+        return InteractionResultHolder.consume(stack);
+    }
+
+    public boolean reloadFromInventory(Player player, ItemStack stack, boolean triggerAnimation) {
+        int currentAmmo = getAmmo(stack);
+        int missingAmmo = MAX_AMMO - currentAmmo;
+        if (missingAmmo <= 0) {
+            return false;
+        }
+
+        int ammoInInventory = countAmmoItems(player);
+        if (ammoInInventory <= 0 && !player.getAbilities().instabuild) {
+            player.level().playSound(null, player.blockPosition(), SoundEvents.DISPENSER_FAIL, SoundSource.PLAYERS, 0.8f, 1.0f);
+            return false;
+        }
+
+        int toLoad = player.getAbilities().instabuild ? missingAmmo : Math.min(missingAmmo, ammoInInventory);
+        if (!player.getAbilities().instabuild) {
+            consumeAmmoItems(player, toLoad);
+        }
+
+        setAmmo(stack, currentAmmo + toLoad);
+
+        if (triggerAnimation && player.level() instanceof ServerLevel serverLevel) {
+            triggerAnim(player, GeoItem.getOrAssignId(stack, serverLevel), "controller", "reload");
+        }
+
+        player.level().playSound(null, player.blockPosition(), SoundEvents.CROSSBOW_LOADING_END, SoundSource.PLAYERS, 0.9f, 0.9f);
+        player.getCooldowns().addCooldown(this, 12);
+        return true;
     }
 
     private void fire(Level level, Player player) {
-        Vec3 start = player.getEyePosition();
-        Vec3 end = start.add(player.getLookAngle().scale(RANGE));
+        SmallFireball fireball = new SmallFireball(level, player,
+                player.getLookAngle().x,
+                player.getLookAngle().y,
+                player.getLookAngle().z);
+        fireball.setPos(player.getX(), player.getEyeY() - 0.1, player.getZ());
+        fireball.setDeltaMovement(player.getLookAngle().scale(1.5));
+        fireball.setNoGravity(true);
+        level.addFreshEntity(fireball);
+    }
 
-        HitResult blockHit = level.clip(new ClipContext(start, end, ClipContext.Block.COLLIDER, ClipContext.Fluid.NONE, player));
-        double maxDistSqr = start.distanceToSqr(blockHit.getLocation());
+    private int countAmmoItems(Player player) {
+        int total = 0;
+        for (ItemStack inventoryStack : player.getInventory().items) {
+            if (inventoryStack.is(Items.FIRE_CHARGE)) {
+                total += inventoryStack.getCount();
+            }
+        }
+        return total;
+    }
 
-        Entity hitEntity = null;
-        Vec3 hitPos = blockHit.getLocation();
-
-        for (Entity candidate : level.getEntities(player, new AABB(start, end).inflate(1.5))) {
-            if (!(candidate instanceof LivingEntity living) || candidate == player) {
+    private void consumeAmmoItems(Player player, int amount) {
+        for (ItemStack inventoryStack : player.getInventory().items) {
+            if (amount <= 0) {
+                return;
+            }
+            if (!inventoryStack.is(Items.FIRE_CHARGE)) {
                 continue;
             }
 
-            AABB inflated = candidate.getBoundingBox().inflate(0.3);
-            EntityHitResult entityHit = inflated.clip(start, end).map(vec3 -> new EntityHitResult(candidate, vec3)).orElse(null);
-            if (entityHit == null) {
-                continue;
-            }
-
-            double distSqr = start.distanceToSqr(entityHit.getLocation());
-            if (distSqr <= maxDistSqr) {
-                maxDistSqr = distSqr;
-                hitEntity = candidate;
-                hitPos = entityHit.getLocation();
-            }
-        }
-
-        if (hitEntity instanceof LivingEntity livingTarget) {
-            DamageSource source = player.damageSources().playerAttack(player);
-            livingTarget.hurt(source, 7.0f);
-        }
-
-        if (level instanceof ServerLevel serverLevel) {
-            serverLevel.sendParticles(net.minecraft.core.particles.ParticleTypes.SMOKE, hitPos.x, hitPos.y, hitPos.z, 2, 0.02, 0.02, 0.02, 0.001);
+            int consumed = Math.min(amount, inventoryStack.getCount());
+            inventoryStack.shrink(consumed);
+            amount -= consumed;
         }
     }
 
@@ -157,7 +176,7 @@ public class RevolverItem extends Item implements GeoItem {
 
     @Override
     public boolean isBarVisible(ItemStack stack) {
-        return getAmmo(stack) < MAX_AMMO;
+        return true;
     }
 
     @Override
