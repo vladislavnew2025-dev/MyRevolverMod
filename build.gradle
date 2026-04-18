@@ -54,31 +54,34 @@ tasks.register('importExternalAwpAssets') {
     def awpGeoExternal = file('awp.geo.json')
     def awpDisplayExternal = file('awp_display.json')
 
-    inputs.files(awpAnimationExternal, awpGeoExternal, awpDisplayExternal)
+    def awpAnimationFallback = file('src/main/resources/assets/myrevolvermod/animations/awp.animation.json')
+    def awpGeoFallback = file('src/main/resources/assets/myrevolvermod/geo/awp.geo.json')
+    def awpDisplayFallback = file('src/main/resources/assets/myrevolvermod/models/item/awp.json')
+
+    inputs.files(awpAnimationExternal, awpGeoExternal, awpDisplayExternal,
+            awpAnimationFallback, awpGeoFallback, awpDisplayFallback)
 
     doLast {
         File root = generatedBase.get()
 
-        if (awpAnimationExternal.exists()) {
-            File out = new File(root, 'assets/myrevolvermod/animations/awp.animation.json')
-            out.parentFile.mkdirs()
-            out.text = awpAnimationExternal.text
-            println 'Imported external awp.animation.json'
-        }
+        File animationSource = awpAnimationExternal.exists() ? awpAnimationExternal : awpAnimationFallback
+        File geoSource = awpGeoExternal.exists() ? awpGeoExternal : awpGeoFallback
+        File displaySource = awpDisplayExternal.exists() ? awpDisplayExternal : awpDisplayFallback
 
-        if (awpGeoExternal.exists()) {
-            File out = new File(root, 'assets/myrevolvermod/geo/awp.geo.json')
-            out.parentFile.mkdirs()
-            out.text = awpGeoExternal.text
-            println 'Imported external awp.geo.json'
-        }
+        File animationOut = new File(root, 'assets/myrevolvermod/animations/awp.animation.json')
+        animationOut.parentFile.mkdirs()
+        animationOut.text = animationSource.text
+        println "Using AWP animation source: ${animationSource.path}"
 
-        if (awpDisplayExternal.exists()) {
-            File out = new File(root, 'assets/myrevolvermod/models/item/awp.json')
-            out.parentFile.mkdirs()
-            out.text = awpDisplayExternal.text
-            println 'Imported external awp_display.json'
-        }
+        File geoOut = new File(root, 'assets/myrevolvermod/geo/awp.geo.json')
+        geoOut.parentFile.mkdirs()
+        geoOut.text = geoSource.text
+        println "Using AWP geo source: ${geoSource.path}"
+
+        File displayOut = new File(root, 'assets/myrevolvermod/models/item/awp.json')
+        displayOut.parentFile.mkdirs()
+        displayOut.text = displaySource.text
+        println "Using AWP display source: ${displaySource.path}"
     }
 }
 
@@ -108,6 +111,9 @@ tasks.register('generateAwpTexture') {
 tasks.named('processResources').configure {
     dependsOn tasks.named('importExternalAwpAssets')
     dependsOn tasks.named('generateAwpTexture')
+    exclude 'assets/myrevolvermod/animations/awp.animation.json'
+    exclude 'assets/myrevolvermod/geo/awp.geo.json'
+    exclude 'assets/myrevolvermod/models/item/awp.json'
 }
 
 minecraft {
