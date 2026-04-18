@@ -1,0 +1,99 @@
+{
+  "credit": "Made with Blockbench",
+  "parent": "builtin/entity",
+  "texture_size": [
+    64,
+    64
+  ],
+  "display": {
+    "thirdperson_righthand": {
+      "rotation": [
+        -113.53,
+        15.59,
+        151.56
+      ],
+      "translation": [
+        -3.5,
+        -2.25,
+        -4.75
+      ]
+    },
+    "thirdperson_lefthand": {
+      "rotation": [
+        86.04,
+        -88.98,
+        84.56
+      ],
+      "translation": [
+        0.25,
+        -6.25,
+        -5
+      ]
+    },
+    "firstperson_righthand": {
+      "rotation": [
+        -155.48999999999978,
+        83.09000000000015,
+        155.9699999999998
+      ],
+      "translation": [
+        -6,
+        -2.25,
+        0.25
+      ]
+    },
+    "firstperson_lefthand": {
+      "rotation": [
+        -180,
+        -75.25,
+        180
+      ],
+      "translation": [
+        -1.75,
+        -3.25,
+        0
+      ]
+    },
+    "ground": {
+      "rotation": [
+        90,
+        0,
+        0
+      ],
+      "translation": [
+        0,
+        -0.75,
+        -8
+      ]
+    },
+    "gui": {
+      "rotation": [
+        165.08,
+        27.61,
+        -128.27
+      ],
+      "translation": [
+        -4.75,
+        -4.25,
+        0
+      ]
+    },
+    "head": {
+      "translation": [
+        0,
+        1,
+        0
+      ]
+    },
+    "fixed": {
+      "translation": [
+        0,
+        -6.5,
+        0
+      ]
+    }
+  },
+  "textures": {
+    "particle": "myrevolvermod:item/awp"
+  }
+}
