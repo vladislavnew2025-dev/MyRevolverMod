@@ -1,0 +1,188 @@
+plugins {
+    id 'eclipse'
+    id 'idea'
+    id 'maven-publish'
+    id 'net.minecraftforge.gradle' version '[6.0.24,6.2)'
+}
+
+version = '1.0.0'
+group = 'com.myrevolvermod.myrevolvermod'
+
+base {
+    archivesName = 'myrevolvermod'
+}
+
+java.toolchain.languageVersion = JavaLanguageVersion.of(17)
+
+
+def generatedResourcesDir = layout.buildDirectory.dir('generated/resources/main')
+
+sourceSets {
+    main {
+        resources {
+            srcDir generatedResourcesDir
+        }
+    }
+}
+
+tasks.register('generateRevolverTexture') {
+    def inputFile = file('src/main/resources/assets/myrevolvermod/textures/item/revolver.png.base64')
+    def outputFile = generatedResourcesDir.map { it.file('assets/myrevolvermod/textures/item/revolver.png') }
+
+    inputs.file(inputFile)
+    outputs.file(outputFile)
+
+    doLast {
+        byte[] decoded = java.util.Base64.getDecoder().decode(inputFile.text.trim())
+        File out = outputFile.get().asFile
+        out.parentFile.mkdirs()
+        out.bytes = decoded
+    }
+}
+
+tasks.named('processResources').configure {
+    dependsOn tasks.named('generateRevolverTexture')
+}
+
+
+
+
+tasks.register('importExternalAwpAssets') {
+    def generatedBase = generatedResourcesDir.map { it.asFile }
+
+    def awpAnimationExternal = file('awp.animation.json')
+    def awpGeoExternal = file('awp.geo.json')
+    def awpDisplayExternal = file('awp_display.json')
+
+    def awpAnimationFallback = file('src/main/resources/assets/myrevolvermod/animations/awp.animation.json')
+    def awpGeoFallback = file('src/main/resources/assets/myrevolvermod/geo/awp.geo.json')
+    def awpDisplayFallback = file('src/main/resources/assets/myrevolvermod/models/item/awp.json')
+
+    inputs.files(awpAnimationExternal, awpGeoExternal, awpDisplayExternal,
+            awpAnimationFallback, awpGeoFallback, awpDisplayFallback)
+
+    doLast {
+        File root = generatedBase.get()
+
+        File animationSource = awpAnimationExternal.exists() ? awpAnimationExternal : awpAnimationFallback
+        File geoSource = awpGeoExternal.exists() ? awpGeoExternal : awpGeoFallback
+        File displaySource = awpDisplayExternal.exists() ? awpDisplayExternal : awpDisplayFallback
+
+        File animationOut = new File(root, 'assets/myrevolvermod/animations/awp.animation.json')
+        animationOut.parentFile.mkdirs()
+        animationOut.text = animationSource.text
+        println "Using AWP animation source: ${animationSource.path}"
+
+        File geoOut = new File(root, 'assets/myrevolvermod/geo/awp.geo.json')
+        geoOut.parentFile.mkdirs()
+        geoOut.text = geoSource.text
+        println "Using AWP geo source: ${geoSource.path}"
+
+        File displayOut = new File(root, 'assets/myrevolvermod/models/item/awp.json')
+        displayOut.parentFile.mkdirs()
+        displayOut.text = displaySource.text
+        println "Using AWP display source: ${displaySource.path}"
+    }
+}
+
+tasks.register('generateAwpTexture') {
+    def externalPng = file('awp.png')
+    def base64Input = file('src/main/resources/assets/myrevolvermod/textures/item/awp.png.base64')
+    def outputFile = generatedResourcesDir.map { it.file('assets/myrevolvermod/textures/item/awp.png') }
+
+    inputs.files(externalPng, base64Input)
+    outputs.file(outputFile)
+
+    doLast {
+        File out = outputFile.get().asFile
+        out.parentFile.mkdirs()
+
+        if (externalPng.exists()) {
+            out.bytes = externalPng.bytes
+            println 'Imported external awp.png'
+        } else {
+            byte[] decoded = java.util.Base64.getDecoder().decode(base64Input.text.trim())
+            out.bytes = decoded
+            println 'Using awp.png.base64 fallback texture'
+        }
+    }
+}
+
+tasks.named('processResources').configure {
+    dependsOn tasks.named('importExternalAwpAssets')
+    dependsOn tasks.named('generateAwpTexture')
+    exclude 'assets/myrevolvermod/animations/awp.animation.json'
+    exclude 'assets/myrevolvermod/geo/awp.geo.json'
+    exclude 'assets/myrevolvermod/models/item/awp.json'
+}
+
+minecraft {
+    mappings channel: 'official', version: '1.20.1'
+    copyIdeResources = true
+
+    runs {
+        configureEach {
+            workingDirectory project.file('run')
+            property 'forge.logging.markers', 'REGISTRIES'
+            property 'forge.logging.console.level', 'debug'
+            mods {
+                myrevolvermod {
+                    source sourceSets.main
+                }
+            }
+        }
+
+        client {
+            property 'forge.enabledGameTestNamespaces', 'myrevolvermod'
+        }
+
+        server {
+            property 'forge.enabledGameTestNamespaces', 'myrevolvermod'
+            args '--nogui'
+        }
+    }
+}
+
+repositories {
+    mavenCentral()
+    maven {
+        name = 'GeckoLib'
+        url = 'https://dl.cloudsmith.io/public/geckolib3/geckolib/maven/'
+    }
+}
+
+dependencies {
+    minecraft 'net.minecraftforge:forge:1.20.1-47.4.0'
+    implementation fg.deobf('software.bernie.geckolib:geckolib-forge-1.20.1:4.4.9')
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+}
+
+jar {
+    manifest {
+        attributes([
+            'Specification-Title'     : 'myrevolvermod',
+            'Specification-Vendor'    : 'myrevolvermod',
+            'Specification-Version'   : '1',
+            'Implementation-Title'    : project.name,
+            'Implementation-Version'  : project.version,
+            'Implementation-Vendor'   : 'myrevolvermod',
+            'Implementation-Timestamp': new Date().format("yyyy-MM-dd'T'HH:mm:ssZ")
+        ])
+    }
+}
+
+publishing {
+    publications {
+        register('mavenJava', MavenPublication) {
+            artifact jar
+        }
+    }
+    repositories {
+        maven {
+            url "file://${project.projectDir}/repo"
+        }
+    }
+}
