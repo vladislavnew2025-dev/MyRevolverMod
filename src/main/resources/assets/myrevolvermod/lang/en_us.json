@@ -1,4 +1,6 @@
 {
   "item.myrevolvermod.revolver": "Revolver",
-  "key.myrevolvermod.reload": "Reload Revolver"
+  "item.myrevolvermod.awp": "AWP",
+  "key.myrevolvermod.reload": "Reload Revolver",
+  "creativetab.myrevolvermod.main": "My Revolver Mod"
 }
